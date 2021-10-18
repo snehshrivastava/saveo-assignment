@@ -15,35 +15,24 @@ var storage = multer.diskStorage({
     }  
 });  
 var uploads = multer({storage:storage});  
-//connect to db  
+
 mongoose.connect('mongodb+srv://user007:alwaysme@cluster0.itp2v.mongodb.net/myFirstDatabase?retryWrites=true&w=majority',{useNewUrlParser:true})  
   .then(()=>console.log('connected to db'))  
   .catch((err)=>console.log(err));  
-//init app  
+
 var app = express();  
-//set the template engine  
+
 app.set('view engine','ejs');  
-//fetch data from the request  
+
 app.use(bodyParser.urlencoded({extended:false}));  
 app.use(bodyParser.json());
-//static folder  
+
 app.use(express.static(path.resolve(__dirname,'public')));  
-//default pageload  
+
 app.get('/',(req,res)=>{  
-  csvModel.find((err,data)=>{  
-    if(err){  
-      console.log(err);  
-    }else{  
-      if(data!=''){  
-        res.render('index',{data:data});  
-      }else{  
-        res.render('index',{data:''});  
-      }  
-    }  
-  });  
+  res.render('index');        
 });  
 app.post('/uploadCSV',uploads.single('csv'),(req,res)=>{  
-//convert csvfile to jsonArray     
   csv()  
   .fromFile(req.file.path)  
   .then((jsonObj)=>{  
@@ -51,6 +40,7 @@ app.post('/uploadCSV',uploads.single('csv'),(req,res)=>{
     csvModel.insertMany(jsonObj,(err,data)=>{  
     if(err){  
       console.log(err);  
+      res.send({err});
     }else{  
       res.redirect('/');  
     }  
