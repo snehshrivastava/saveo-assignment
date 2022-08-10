@@ -5,6 +5,7 @@ var path = require('path');
 var csvModel = require('./models/medicineModel');
 var csv = require('csvtojson');
 var bodyParser = require('body-parser');
+const orderController = require("./controller/orderController");
 const uuid = require("uuid");
 var storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -32,69 +33,17 @@ app.use(express.static(path.resolve(__dirname, 'public')));
 app.get('/', (req, res) => {
   res.render('index');
 });
-app.post('/uploadCSV', uploads.single('csv'), (req, res) => {
-  csv()
-    .fromFile(req.file.path)
-    .then((jsonObj) => {
-      console.log('json object created');
-      csvModel.insertMany(jsonObj, (err, data) => {
-        if (err) {
-          console.log(err);
-          res.send({ err });
-        } else {
-          res.redirect('/');
-        }
-      });
-    });
-});
-app.get('/getMedicineDetails', (req, res) => {
-  let c_unique_id = req.body.c_unique_id;
-  csvModel.find({ 'c_unique_code': c_unique_id }, function (err, data) {
-    res.setHeader('Content-Type', 'application/json');
-    if (err)
-      res.send(err);
-    else
-      res.send({ 'data': data });
-  });
-  console.log(c_unique_id);
-});
+// "add" api to add new order with reqired fields
+app.post('/add', orderController.addOrder);
+// "update/:id" update order details
+app.post('/update/:id', orderController.updateOrder);
+// "updateStatus/:id" update the route from packed,placed, dispactched,delivered
+app.post('/updateStatus/:id', orderController.updateStatus);
+// "delete/:id" to delete the order
+app.post('/delete/:id', orderController.deleteOrder);
+// "checkCapacity/:date" return the left milk as per orders of the day
+app.post('/checkCapacity/:date', orderController.checkCapacity);
 
-app.get('/searchMedicine', (req, res) => {
-  let name = req.body.name;
-  csvModel.find({ "c_name": { $regex: '.*' + name + '.*' } }, 'c_name', function (err, data) {
-    res.setHeader('Content-Type', 'application/json');
-    if (err)
-      res.send(err);
-    else
-      res.send({ 'data': data });
-  });
-});
-
-app.put('/placeorder', async (req, res) => {
-  let c_unique_id = req.body.c_unique_id;
-  let quantity = req.body.quantity;
-  let c_name = req.body.c_name;
-  let data = await csvModel.findOne({ "c_name": c_name, "c_unique_code": c_unique_id });
-  let orignal_quantity = data.n_balance_qty;
-  let finalData;
-  if (orignal_quantity > quantity) {
-    let temp = orignal_quantity - quantity;
-    finalData = await csvModel.findOneAndUpdate({ "c_name": c_name, "c_unique_code": c_unique_id }, { "n_balance_qty": temp });
-    res.setHeader('Content-Type', 'application/json');
-    finalData = await csvModel.findOne({ "c_name": c_name, "c_unique_code": c_unique_id });
-    if (!finalData) {
-      res.send({ "err": "didnt find any data" });
-    }
-    else
-      res.send({ "oder_id": uuid.v4() });
-  }
-  else {
-    res.send({ err: "error in quantity" });
-  }
-
-
-
-});
 //assign port  
 var port = process.env.PORT || 3000;
 app.listen(port, () => console.log('server run at port ' + port));  
